@@ -8,35 +8,51 @@
 
 import UIKit
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, UICollectionViewDelegate {
     
-    @IBOutlet weak var imageView: UIImageView!
+    @IBOutlet weak var collectionView: UICollectionView!
     var store: PhotoStore!
+    let photoDataSource = PhotoDataSource();
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        collectionView.dataSource = photoDataSource;
+        collectionView.delegate = self;
         store.fetchPhotos{
             (result) -> Void in
             switch result {
             case let .success(photos):
                 print("successfully loaded \(photos.count)");
-                if let firstPhoto = photos.first {
-                    self.store.fetchPhoto(photo: firstPhoto, completion: { (imageResult) in
-                        switch imageResult {
-                        case let .success(photoImage):
-                            self.imageView.image = photoImage;
-                        case let .failure(error):
-                            print("image creatoipn failed \(error)")
-                        }
-                    })
-                }
+                self.photoDataSource.photos = photos;
             case let .failure(error):
                 print("could not load error \(error)")
             }
+            self.collectionView.reloadSections(IndexSet(integer: 0))
         }
         
-        // Do any additional setup after loading the view, typically from a nib.
+        
     }
     
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        let photo = photoDataSource.photos[indexPath.row]
+        
+        store.fetchPhoto(photo: photo) { (imageResult) in
+            
+            guard let photoIndex = self.photoDataSource.photos.index(where: {$0 === photo}),
+                case let .success(image) = imageResult else {
+                    return;
+            }
+            let photoIndexPath = IndexPath(item: photoIndex, section: 0);
+            
+            if let cell = self.collectionView.cellForItem(at: photoIndexPath) as? PhotoCollectionViewCell{
+                cell.update(with: image);
+            }
+            
+            
+        }
+        
+        
+    }
     
 }
 
